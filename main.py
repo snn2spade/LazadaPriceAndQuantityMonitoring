@@ -9,7 +9,8 @@ from bs4 import BeautifulSoup
 chanel_access_token = "3Xwxc9Ytd2rvlPzcbgEIbxSzXVA/nKu3e3rjg57ODMuaYBrAw9i0AUxAScowQvw6VY06KRL5fkGdYHa9KwG3VovvUWj+kwoFmcd7SWOSsBD4Rf1YEvS++NHLzXP/Sj/QMVHj+wGyuQPWwQVjKM9htgdB04t89/1O/w1cDnyilFU="
 monitor_url = "https://www.lazada.co.th/products/apple-iphone-xr-i259756890-s399955728.html/"
 server_status_refresh_every = 3600  # Sec
-refresh_interval = 5  # Sec
+refresh_interval = 15  # Sec
+
 
 ##################
 
@@ -18,10 +19,7 @@ def extract_price_and_max_quantity(event, context):
     soup = BeautifulSoup(response.text, "html.parser")
     max_quantity = int(soup.find("span", {"class": "next-input-single"}).input["max"])
     price = soup.find("span", {"class": "pdp-price"}).text
-    try:
-        price = re.search('\d+(,\d{3})*(\.\d+)?', price).group(0)
-    except AttributeError as err:
-        print("Cannot convert extract money-like-string from price text")
+    price = re.search('\d+(,\d{3})*(\.\d+)?', price).group(0)
     return {"price": price, "max_quantity": max_quantity}
 
 
@@ -50,10 +48,13 @@ prev_max_quantity = response["max_quantity"]
 prev_price = response["price"]
 send_line_msg("Server Started with Price = {}, Max Quantity = {}".format(prev_price, prev_max_quantity))
 while (True):
-    print("Running...")
-    time.sleep(refresh_interval)
+    print("Running... [{}]".format(total_sleep))
     total_sleep += refresh_interval
-    response = extract_price_and_max_quantity(None, None)
+    try:
+        response = extract_price_and_max_quantity(None, None)
+    except AttributeError as err:
+        print(err)
+        continue
     max_quantity = response["max_quantity"]
     price = response["price"]
 
@@ -67,3 +68,4 @@ while (True):
     if total_sleep >= server_status_refresh_every:
         total_sleep = 0
         send_line_msg("Server Status still up. Price = {}, Max Quantity = {}".format(price, max_quantity))
+    time.sleep(refresh_interval)
